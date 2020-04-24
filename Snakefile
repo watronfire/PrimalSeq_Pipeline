@@ -10,6 +10,8 @@ out_dir="/gpfs/home/natem/analysis/2020.03.23_wnv"
 ref_sequence="/gpfs/home/natem/db/wnv/WNV_REF_COAV997.fasta"
 bed_file="/gpfs/home/natem/scripts/zika-pipeline/res/WNV_400.bed"
 res="/gpfs/home/natem/scripts/zika-pipeline/res"
+type="nextera"
+limit=120
 
 # Find all gzipped files in input directory and add to sample dictionary.
 # Within dictionary, group files based on their sample. I.e. group first and second reads.
@@ -74,10 +76,9 @@ rule generate_statistics:
         Outputs:
         - alignment_statistics.csv  : Records a number of statistics for each sample
         - barcode_satistics         : Records the number of reads which align to each barcode in barcode reference"""
-
     input:
         align = expand( "{out_dir}/_aligned_bams/{sample}.trimmed.aligned.sorted.bam", out_dir=out_dir, sample=SAMPLES ),
-        barcodes = expand( "{out_dir}/_barcode/{sample}.tsv", out_dir=out_dir, sample=SAMPLES )
+        barcodes = expand( "{out_dir}/_barcode/{sample}.csv", out_dir=out_dir, sample=SAMPLES )
     output:
         alignment_stats = "{out_dir}/alignment_statistics.csv",
         barcode_stats = "{out_dir}/barcode_statistics.csv"
@@ -117,9 +118,7 @@ rule generate_statistics:
         # Barcode Stats
         bc_list = list()
         for i in input.barcodes:
-            name = os.path.basename( i )
-            name = str( os.path.splitext( name )[0] )
-            temp_bc = pd.read_csv( i, delimiter="\t", header=None )
+            temp_bc = pd.read_csv( i )
             temp_bc.columns = ["Barcode", name]
             temp_bc = temp_bc.set_index( "Barcode" )
             bc_list.append( temp_bc )
@@ -163,7 +162,6 @@ rule generate_consensus:
     shell:
         "samtools mpileup -A -d 300000 -Q 0 -F 0 {input} | ivar consensus -m 10 -n N -p {output}"
 
-
 rule generate_coverage_plot:
     input:
         "{out_dir}/_aligned_bams/{sample}.trimmed.aligned.sorted.bam"
@@ -192,18 +190,36 @@ rule barcode_check:
         unmapped = temp( "{out_dir}/_barcode/{sample}.bam" ),
         unmapped_r1 = temp( "{out_dir}/_barcode/{sample}_r1.fastq" ),
         unmapped_r2 = temp( "{out_dir}/_barcode/{sample}_r2.fastq" ),
-        merged = temp( "{out_dir}/_barcode/{sample}.assembled.fastq" ),
         barcode_bam = "{out_dir}/_barcode/{sample}_bs.bam",
-        barcode_stats = "{out_dir}/_barcode/{sample}.tsv"
-    shell:
-        "module load bedtools &&"
-        "module load pear &&"
-        "bwa mem {ref_sequence} {input[0]} {input[1]} | samtools view -b -f 12 -F 256 | samtools sort -o {output.unmapped} &&"
-        "samtools index {output.unmapped} &&"
-        "bedtools bamtofastq -i {output.unmapped} -fq {output.unmapped_r1} -fq2 {output.unmapped_r2} &&"
-        "pear -n 356 -m 398 -f {output.unmapped_r1} -r {output.unmapped_r2} -o {out_dir}/_barcode/{wildcards.sample} &&"
-        "bwa mem -T 346 /gpfs/home/natem/analysis/2020.02.10_WNV/res/barcodes.fasta {output.merged} | samtools view -F 4 -Sbu | samtools sort -o {output.barcode_bam} &&"
-        "samtools idxstats {output.barcode_bam} | cut -f 1,3 > {output.barcode_stats}"
+        barcode_stats = "{out_dir}/_barcode/{sample}.csv"
+    run:
+        # Load required modules
+        command = "module load bedtools && "
+        if type == "amplicon":
+            command += "module load pear && "
+
+        # Align reads to west nile genome and extract unmapped reads
+        command += "bwa mem {} {} {} | samtools view -b -f 12 -F 256 | samtools sort -o {} && ".format( ref_sequence, input[0], input[1], output.unmapped )
+        command += "samtools index {} && ".format( output.unmapped )
+
+        # Seperate read pairs into seperate files from alignment
+        command += "bedtools bamtofastq -i {} -fq {} -fq2 {} && ".format( output.unmapped, output.unmapped_r1, out.unmapped_r2 )
+
+        # Pair reads if they are amplicons, so paired information can inform contamination.
+        if type == "amplicon":
+            merged = "{}/_barcode/{}.assembled.fastq".format( out_dir, wilcards.sample )
+            merged_prefix = "{}/_barcode/{}".format( out_dir, wilcards.sample )
+            command += "pear -n 356 -m 398 -f {output.unmapped_r1} -r {output.unmapped_r2} -o {out_dir}/_barcode/{wildcards.sample} && ".format( output.unmapped_r1, output.unmapped_r2, merged_prefix )
+            alignment_input = [ merged ]
+            alignment_reference = barcodes
+        else:
+            alignment_input = [unmapped_r1, unmapped_r2]
+            alignment_reference = barcode_regions
+
+        # Align the unmapped reads to to barcode reference. This differs based on whether the reads where generated
+        # using nextera or an amplicon based method. Previous versions used an alignment score limit of 346 for amplicon
+        command += "bwa mem -T 346 {} {} | samtools view -F 4 -Sbu | samtools sort -o {} && ".format( alignment_reference, " ".join( alignment_input ), output.barcode_bam )
+        command += "python3 scripts/contamination.py -l {} -b {} {} {} {}".format( limit, alignment_reference, "-n" if type=="nextera" else "-a", output.barcode_bam, output.barcode_stats )
 
 rule align_reads:
     input:
