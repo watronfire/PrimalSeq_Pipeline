@@ -4,12 +4,15 @@ import pandas as pd
 from subprocess import call, check_output
 from Bio import SeqIO
 
+# Inputs and required files for pipeline
 in_dir="/gpfs/group/andersen/raw_data/2020.03.23_WNV/fastqs"
 out_dir="/gpfs/home/natem/analysis/2020.03.23_wnv"
 ref_sequence="/gpfs/home/natem/db/wnv/WNV_REF_COAV997.fasta"
 bed_file="/gpfs/home/natem/scripts/zika-pipeline/res/WNV_400.bed"
 res="/gpfs/home/natem/scripts/zika-pipeline/res"
 
+# Find all gzipped files in input directory and add to sample dictionary.
+# Within dictionary, group files based on their sample. I.e. group first and second reads.
 SAMPLES = dict()
 for file in os.listdir( in_dir ):
     if fnmatch( file, "*.gz" ):
@@ -19,6 +22,8 @@ for file in os.listdir( in_dir ):
         else:
             SAMPLES[sample_name].append( file )
 
+# Load sample dataset, and generate final file names according to metadata.
+# Will fit format: W###_Collection-date_Country_State_County_Latitude_Longitude
 california = pd.read_csv( os.path.join( res, "california_samples.csv" ), usecols=["Scripps_ID", "Collection date", "Country", "State", "County", "Latitude", "Longitude"] )
 california["Collection date"] = pd.to_datetime( california["Collection date"] )
 california["Collection date"] = california["Collection date"].dt.strftime( "%Y-%m-%d" )
@@ -29,6 +34,7 @@ california["Longitude"] = california["Longitude"].round( 3 ).apply( lambda x: "{
 california["File"] = california.apply( lambda x: ("_".join( [str( i ) for i in x] ) ).strip(), axis=1, raw=True )
 california.index = california["Scripps_ID"]
 
+# Assign final file names to each sample.
 final_file = dict()
 for i in SAMPLES.keys():
     try:
@@ -37,6 +43,18 @@ for i in SAMPLES.keys():
         final_file[i] = i
 
 rule all:
+    """ Output rule; specifies files we want to generate
+
+        Outputs:
+        - {sample}.fa                           : Consensus sequence for each sample
+        - {sample}_bs.bam                       : Alignment of unmapped reads to reference barcode sequences
+        - {full_name}.fasta                     : Consensus sequence for each sample, renamed to usable format
+        - {sample}.coverage.png                 : Plot showing read coverage at each base of reference genome
+        - {sample}.aligned.sorted.bam           : All reads aligned to reference genome
+        - {sample}.trimmed.aligned.sorted.bam   : Reads aligned to reference genome and quality trimmed
+        - alignment_statistics.csv              : Records a number of statistics for each sample
+        - barcode_statistics.csv                : Records the number of reads which align to each barcode in barcode reference"""
+
     input:
         expand( "{out_dir}/_consensus/{sample}.fa", out_dir = out_dir, sample = SAMPLES ),
         expand( "{out_dir}/_barcode/{sample}_bs.bam", out_dir=out_dir, sample=SAMPLES ),
@@ -48,6 +66,15 @@ rule all:
         os.path.join( out_dir, "barcode_statistics.csv" )
     
 rule generate_statistics:
+    """ Calculates a number of statistics for each sample. Calculates alignment statistics like number of reads, average per base coverage, and reference genome coverage. Also colates barcode statistics into a single data set.
+
+        Inputs:
+        - {sample}.trimmed.aligned.sorted.bam   : Reads aligned to reference genome and quality trimmed
+
+        Outputs:
+        - alignment_statistics.csv  : Records a number of statistics for each sample
+        - barcode_satistics         : Records the number of reads which align to each barcode in barcode reference"""
+
     input:
         align = expand( "{out_dir}/_aligned_bams/{sample}.trimmed.aligned.sorted.bam", out_dir=out_dir, sample=SAMPLES ),
         barcodes = expand( "{out_dir}/_barcode/{sample}.tsv", out_dir=out_dir, sample=SAMPLES )
@@ -100,6 +127,14 @@ rule generate_statistics:
         bc.to_csv( output.barcode_stats )
         
 rule cleanup_consensus:
+    """ Renames consensus sequences so that they match a useful format. The default output of iVar isn't the best if multiple samples are run in parallel, so I rename them here. 
+
+        Input:
+        - {sample}.fa   : Consensus sequence directly from iVar consensus
+
+        Output:
+        - {full_name}.fasta : Renamed consensus according to format W###_Collection-date_Country_State_County_Latitude_Longitude """
+
     input:
         expand( "{out_dir}/_consensus/{sample}.fa", out_dir=out_dir, sample=SAMPLES )
     output:
@@ -113,6 +148,14 @@ rule cleanup_consensus:
             SeqIO.write( record, os.path.join( out_dir, "_final/{}.fasta".format( record.id ) ), "fasta" )
 
 rule generate_consensus:
+    """ Generates a consensus sequence from an alignment.
+
+        Input:
+        - {sample}.trimmed.aligned.sorted.bam   : Reads aligned to reference sequence and trimmed for quality and primer sequences
+
+        Output:
+        - {sample}.fa   : Consensus sequence in fasta format"""
+
     input:
         "{out_dir}/_aligned_bams/{sample}.trimmed.aligned.sorted.bam"
     output:
