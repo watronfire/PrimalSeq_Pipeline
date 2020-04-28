@@ -1,0 +1,14 @@
+{
+  "in_dir" : "/gpfs/home/natem/analysis/2020.04.21_cc/input",
+  "out_dir" : "/gpfs/home/natem/analysis/2020.04.21_cc",
+  "ref_sequence" : "/gpfs/home/natem/db/wnv/WNV_REF_COAV997.fasta",
+  "bed_file" : "/gpfs/home/natem/scripts/zika-pipeline/res/WNV_400.bed",
+  "res" : "/gpfs/home/natem/scripts/zika-pipeline/res",
+  "scripts" : "/gpfs/home/natem/scripts/zika-pipeline/scripts",
+  "barcode_check" : {
+    "barcodes" : "/gpfs/home/natem/scripts/zika-pipeline/res/barcodes.fasta",
+    "barcode_regions" : "/gpfs/home/natem/scripts/zika-pipeline/res/barcode_regions.fasta",
+    "type" : "nextera",
+    "limit" : 120
+  }
+}
