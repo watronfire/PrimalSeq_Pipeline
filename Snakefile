@@ -10,6 +10,7 @@ out_dir="/gpfs/home/natem/analysis/2020.04.21_cc"
 ref_sequence="/gpfs/home/natem/db/wnv/WNV_REF_COAV997.fasta"
 bed_file="/gpfs/home/natem/scripts/zika-pipeline/res/WNV_400.bed"
 res="/gpfs/home/natem/scripts/zika-pipeline/res"
+scripts="/gpfs/home/natem/scripts/zika-pipeline/scripts"
 itype="nextera"
 limit=120
 barcodes="/gpfs/home/natem/scripts/zika-pipeline/res/barcodes.fasta"
@@ -171,7 +172,7 @@ rule generate_coverage_plot:
         "{out_dir}/_coverage/{sample}.coverage.png"
     shell:
         "samtools depth -aa -d 0 {input} > {output[0]} &&"
-        "python {res}/coverageGraph.py {output[0]} {output[1]}"
+        "python {scripts}/graph_coverage.py {output[0]} {output[1]}"
 
 rule trim_primer_quality:
     input: 
