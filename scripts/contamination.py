@@ -30,7 +30,6 @@ if __name__ == "__main__":
     parser.add_argument( "output", help="output csv" )
 
     # Initialize optional arguments
-    parser.add_argument( "-v", "--verbose", help="increase output verbosity", action="count", default=0 )
     parser.add_argument( "-l", "--limit", help="minimum required alignment score to filter accurate reads", type=int, required=True )
     parser.add_argument( "-b", "--barcodes", help="fasta of barcode files" )
 

@@ -1,3 +1,5 @@
+import itertools
+
 import pandas as pd
 import argparse
 import matplotlib.pyplot as plt
@@ -64,7 +66,7 @@ def guess_contamination_events( matrix, inclusion_limit, contamination_limit ):
     # return object; format is contaminant_source, contaminant_sink, magnitude
     events = list()
 
-    # generate propoertional matrix
+    # generate proportional matrix
     matrix_pro = matrix.apply( lambda x: x / x.sum() )
 
     for i in matrix_pro.loc[:,matrix.sum() > inclusion_limit]:
@@ -74,11 +76,19 @@ def guess_contamination_events( matrix, inclusion_limit, contamination_limit ):
         for j in temp.iteritems():
             events.append( ( get_position(j[0]), get_position(barcode_dict[i]), j[1], j[0], barcode_dict[i] ) )
 
-
     exclusion_list = [get_position(barcode_dict[i]) for i in matrix.columns[matrix.sum() < inclusion_limit]]
     return events, exclusion_list
 
-def get_position( bc_name ):
+def get_majority( series ):
+    forward = series.loc[series["Forward"],"Barcode"].iloc[0]
+    reverse = series.loc[~series["Forward"],"Barcode"].iloc[0]
+    return forward, reverse
+
+def get_all_barcodes( series ):
+    permutations = itertools.product( series.loc[series["Forward"],"Barcode"], series.loc[~series["Forward"],"Barcode"] )
+    return [i for i in permutations]
+
+def get_position( bc_name, columnwise=True ):
     bc_number = int( bc_name.split( "-" )[-1] )
     x_pos = (bc_number + 1) % 12
     if x_pos == 0:
@@ -115,3 +125,22 @@ if __name__ == "__main__":
     plot_contamination( ce, args.output, el )
 
     for i in ce: print(i)
+
+    #barcode_dict = dict()
+    #for l, i in enumerate( range( 1, 9 ) ) :
+    #    for k, j in enumerate( range( 9, 21 ) ) :
+    #        pairing = ("Barcode_Forward_{}".format( i ), "Barcode_Reverse_{}".format( j ))
+    #        barcode_dict[pairing] = "BarcodeOligo-{}".format( (i - 1) * 12 + k )
+#
+    #data = { "Barcode" : ["Barcode_Forward_1", "Barcode_Forward_2", "Barcode_Forward_3", "Barcode_Reverse_4", "Barcode_Reverse_5"],
+    #         "Forward" : [True, True, True, False, False],
+    #         "A" : [50, 5, 0, 50, 5],
+    #         "B" : [50, 5, 0, 0, 55],
+    #         "C" : [0, 50, 0, 50, 0],
+    #         "D" : [50, 0, 0, 50, 0],
+    #         "E" : [0, 0, 50, 50, 0] }
+    #data = pd.DataFrame( data )
+    #data = data.set_index( ["Barcode", "Forward"] )
+    #print( data.head() )
+#
+    #data["Forward","A"]

@@ -5,16 +5,13 @@ from subprocess import call, check_output
 from Bio import SeqIO
 
 # Inputs and required files for pipeline
-in_dir="/gpfs/home/natem/analysis/2020.04.21_cc/input"
-out_dir="/gpfs/home/natem/analysis/2020.04.21_cc"
-ref_sequence="/gpfs/home/natem/db/wnv/WNV_REF_COAV997.fasta"
-bed_file="/gpfs/home/natem/scripts/zika-pipeline/res/WNV_400.bed"
-res="/gpfs/home/natem/scripts/zika-pipeline/res"
-scripts="/gpfs/home/natem/scripts/zika-pipeline/scripts"
-itype="nextera"
-limit=120
-barcodes="/gpfs/home/natem/scripts/zika-pipeline/res/barcodes.fasta"
-barcode_regions="/gpfs/home/natem/scripts/zika-pipeline/res/barcode_regions.fasta"
+in_dir=config["in_dir"]
+out_dir=config["out_dir"]
+ref_sequence=config["ref_sequence"]
+itype=config["barcode_check"]["type"]
+limit=config["barcode_check"]["limit"]
+barcodes=config["barcode_check"]["barcodes"]
+barcode_regions=config["barcode_check"]["barcode_regions"]
 
 # Find all gzipped files in input directory and add to sample dictionary.
 # Within dictionary, group files based on their sample. I.e. group first and second reads.
@@ -29,7 +26,7 @@ for file in os.listdir( in_dir ):
 
 # Load sample dataset, and generate final file names according to metadata.
 # Will fit format: W###_Collection-date_Country_State_County_Latitude_Longitude
-california = pd.read_csv( os.path.join( res, "california_samples.csv" ), usecols=["Scripps_ID", "Collection date", "Country", "State", "County", "Latitude", "Longitude"] )
+california = pd.read_csv( os.path.join( config["res"], "california_samples.csv" ), usecols=["Scripps_ID", "Collection date", "Country", "State", "County", "Latitude", "Longitude"] )
 california["Collection date"] = pd.to_datetime( california["Collection date"] )
 california["Collection date"] = california["Collection date"].dt.strftime( "%Y-%m-%d" )
 california["Latitude"] = pd.to_numeric( california["Latitude"], errors="coerce" )
@@ -172,7 +169,7 @@ rule generate_coverage_plot:
         "{out_dir}/_coverage/{sample}.coverage.png"
     shell:
         "samtools depth -aa -d 0 {input} > {output[0]} &&"
-        "python {scripts}/graph_coverage.py {output[0]} {output[1]}"
+        "python {config[scripts]}/graph_coverage.py {output[0]} {output[1]}"
 
 rule trim_primer_quality:
     input: 
@@ -180,7 +177,7 @@ rule trim_primer_quality:
     output:
         "{out_dir}/_aligned_bams/{sample}.trimmed.aligned.sorted.bam"
     shell:
-        "ivar trim -b {bed_file} -p {out_dir}/_aligned_bams/{wildcards.sample}.trimmed.aligned.sorted -i {input} &&"
+        "ivar trim -b {config[bed_file]} -p {out_dir}/_aligned_bams/{wildcards.sample}.trimmed.aligned.sorted -i {input} &&"
         "samtools sort -o {output} {output} &&"
         "samtools index {output}"
 
@@ -213,16 +210,16 @@ rule barcode_check:
             merged_prefix = "{}/_barcode/{}".format( out_dir, wilcards.sample )
             command += "pear -n 356 -m 398 -f {output.unmapped_r1} -r {output.unmapped_r2} -o {out_dir}/_barcode/{wildcards.sample} && ".format( output.unmapped_r1, output.unmapped_r2, merged_prefix )
             alignment_input = [ output.merged ]
-            alignment_reference = barcodes
+            alignment_reference = config["barcode_check"]["barcodes"]
         else:
             alignment_input = [output.unmapped_r1, output.unmapped_r2]
-            alignment_reference = barcode_regions
+            alignment_reference = config["barcode_check"]["barcode_regions"]
 
         # Align the unmapped reads to to barcode reference. This differs based on whether the reads where generated
         # using nextera or an amplicon based method. Previous versions used an alignment score limit of 346 for amplicon
         command += "bwa mem -T 346 {} {} | samtools view -F 4 -Sbu | samtools sort -o {} && ".format( alignment_reference, " ".join( alignment_input ), output.barcode_bam )
         command += "samtools index {} && ".format( output.barcode_bam )
-        command += "python3 scripts/contamination.py -l {} -b {} {} {} {}".format( limit, alignment_reference, "-n" if itype=="nextera" else "-a", output.barcode_bam, output.barcode_stats )
+        command += "python3 {config[scripts]}/contamination.py -l {} -b {} {} {} {}".format( limit, alignment_reference, "-n" if itype=="nextera" else "-a", output.barcode_bam, output.barcode_stats )
         call( command, shell=True )
         
 rule align_reads:
