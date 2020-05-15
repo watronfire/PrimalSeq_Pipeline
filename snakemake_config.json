@@ -8,6 +8,8 @@
   "barcode_check" : {
     "barcodes" : "/gpfs/home/natem/scripts/zika-pipeline/res/barcodes.fasta",
     "barcode_regions" : "/gpfs/home/natem/scripts/zika-pipeline/res/barcode_regions.fasta",
+    "forward_barcode" : "/gpfs/home/natem/scripts/zika-pipeline/res/forward_barcodes.fasta",
+    "reverse_barcode" : "/gpfs/home/natem/scripts/zika-pipeline/res/reverse_barcodes.fasta",
     "type" : "nextera",
     "limit" : 120
   }

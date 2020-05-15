@@ -3,4 +3,4 @@
 
 cd /gpfs/home/natem/scripts/zika-pipeline/
 module load gcc/6.3.0
-snakemake -k -j 50 --cluster-config cluster.json --cluster "qsub -V -l walltime={cluster.walltime} -l mem={cluster.mem} -l nodes={cluster.n} -q {cluster.queue} -o {cluster.logfile} -j {cluster.stdout}"
+snakemake -k -j 50 --cluster-config cluster.json --cluster "qsub -V -l walltime={cluster.walltime} -l mem={cluster.mem} -l nodes={cluster.n} -q {cluster.queue} -o {cluster.logfile} -j {cluster.stdout}" --configfile snakemake_config.json
