@@ -65,15 +65,15 @@ rule all:
         - barcode_statistics.csv                : Records the number of reads which align to each barcode in barcode reference"""
 
     input:
-        #expand( "{out_dir}/_consensus/{sample}.fa", out_dir = out_dir, sample = SAMPLES ),
+        expand( "{out_dir}/_consensus/{sample}.fa", out_dir = out_dir, sample = SAMPLES ),
         #expand( "{out_dir}/_barcode/{sample}_bs.bam", out_dir=out_dir, sample=SAMPLES ),
         #expand( "{out_dir}/_final/{full_name}.fasta", out_dir=out_dir, full_name=final_file.values() ),
-        #expand( "{out_dir}/_coverage/{sample}.coverage.png", out_dir = out_dir, sample = SAMPLES ),
+        expand( "{out_dir}/_coverage/{sample}.coverage.png", out_dir = out_dir, sample = SAMPLES ),
         expand( "{out_dir}/_untrimmed/{sample}.aligned.sorted.bam", out_dir = out_dir, sample = SAMPLES ),
-        expand( "{out_dir}/_barcode/{sample}.csv", out_dir=out_dir, sample=SAMPLES ),
-        expand( "{out_dir}/_aligned_bams/{sample}.trimmed.aligned.sorted.bam", out_dir = out_dir, sample = SAMPLES ),
-        os.path.join( out_dir, "alignment_statistics.csv" ),
-        os.path.join( out_dir, "barcode_statistics.csv" )
+        #expand( "{out_dir}/_barcode/{sample}.csv", out_dir=out_dir, sample=SAMPLES ),
+        expand( "{out_dir}/_aligned_bams/{sample}.trimmed.aligned.sorted.bam", out_dir = out_dir, sample = SAMPLES )
+        #os.path.join( out_dir, "alignment_statistics.csv" ),
+        #os.path.join( out_dir, "barcode_statistics.csv" )
     
 rule generate_statistics:
     """ Calculates a number of statistics for each sample. Calculates alignment statistics like number of reads, average per base coverage, and reference genome coverage. Also colates barcode statistics into a single data set.
@@ -177,13 +177,18 @@ rule generate_consensus:
 
 rule generate_coverage_plot:
     input:
-        "{out_dir}/_aligned_bams/{sample}.trimmed.aligned.sorted.bam"
+	    "{out_dir}/_untrimmed/{sample}.aligned.sorted.bam"
     output:
         "{out_dir}/_coverage/{sample}.coverage.csv",
         "{out_dir}/_coverage/{sample}.coverage.png"
     shell:
-        "samtools depth -aa -d 0 {input} > {output[0]} &&"
-        "python {config[scripts]}/graph_coverage.py {output[0]} {output[1]}"
+        """
+	samtools depth -aa -d 0 {input} > {output[0]} &&
+        python {config[scripts]}/graph_coverage_v2.py \
+		--input {output[0]} \
+		--bed {config[insert_file]} \
+		--output {output[1]}
+	"""
 
 rule trim_primer_quality:
     input: 

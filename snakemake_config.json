@@ -1,16 +1,17 @@
 {
-  "in_dir" : "/gpfs/home/natem/analysis/2020.04.21_cc/input",
-  "out_dir" : "/gpfs/home/natem/analysis/2020.04.21_cc",
-  "ref_sequence" : "/gpfs/home/natem/db/wnv/WNV_REF_COAV997.fasta",
-  "bed_file" : "/gpfs/home/natem/scripts/zika-pipeline/res/WNV_400.bed",
-  "res" : "/gpfs/home/natem/scripts/zika-pipeline/res",
-  "scripts" : "/gpfs/home/natem/scripts/zika-pipeline/scripts",
-  "barcode_check" : {
-    "barcodes" : "/gpfs/home/natem/scripts/zika-pipeline/res/barcodes.fasta",
-    "barcode_regions" : "/gpfs/home/natem/scripts/zika-pipeline/res/barcode_regions.fasta",
-    "forward_barcode" : "/gpfs/home/natem/scripts/zika-pipeline/res/forward_barcodes.fasta",
-    "reverse_barcode" : "/gpfs/home/natem/scripts/zika-pipeline/res/reverse_barcodes.fasta",
-    "type" : "nextera",
-    "limit" : 120
-  }
+	"in_dir" : "/home/nate/analysis/2021.01.08_wnv/fastqs",
+	"out_dir" : "/home/nate/analysis/2021.01.08_wnv",
+	"ref_sequence" : "/home/nate/db/wnv/WNV_REF_COAV997.fasta",
+	"bed_file" : "/home/nate/scripts/PrimalSeq_Pipeline/res/wnv_na.primer.bed",
+	"insert_file" : "/home/nate/scripts/PrimalSeq_Pipeline/res/wnv_na.insert.bed",
+	"res" : "/home/nate/scripts/PrimalSeq_Pipeline/res",
+	"scripts" : "/home/nate/scripts/PrimalSeq_Pipeline/scripts",
+	"barcode_check" : {
+		"barcodes" : "/home/nate/scripts/PrimalSeq_Pipeline/res/barcodes.fasta",
+		"barcode_regions" : "/home/nate/scripts/PrimalSeq_Pipeline/res/barcode_regions.fasta",
+		"forward_barcode" : "/home/nate/scripts/PrimalSeq_Pipeline/res/forward_barcodes.fasta",
+		"reverse_barcode" : "/home/nate/scripts/PrimalSeq_Pipeline/res/reverse_barcodes.fasta",
+		"type" : "nextera",
+		"limit" : 120
+	}
 }
